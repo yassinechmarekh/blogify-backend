@@ -42,7 +42,7 @@ const userSchema = mongoose.Schema(
     job: {
       type: String,
       minlenght: 2,
-      maxlenght: 25,
+      maxlenght: 50,
     },
     bio: {
       type: String,
