@@ -75,7 +75,7 @@ module.exports.getCountReadersController = asyncHandler(async (req, res) => {
  * @access public
  -----------------------------------------*/
 module.exports.getUserController = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select("-password");
+  const user = await User.findById(req.params.id).select("-password").populate('posts');
   if (!user) {
     return res.status(404).json({ message: "User not found !" });
   }

@@ -1,5 +1,5 @@
 const mongoose = require("mongoose");
-const jwt = require('jsonwebtoken');
+const jwt = require("jsonwebtoken");
 
 const userSchema = mongoose.Schema(
   {
@@ -60,13 +60,23 @@ const userSchema = mongoose.Schema(
       },
     },
   },
-  { timestamps: true }
+  { timestamps: true, toJSON: { virtuals: true }, toObject: { virtuals: true } }
 );
 
+// Get posts belong to this user
+userSchema.virtual("posts", {
+  ref: "post",
+  foreignField: "author",
+  localField: "_id",
+});
+
 // Generate auth token
-userSchema.methods.generateAuthToken = function(){
-    return token = jwt.sign({ id: this._id, status: this.status }, process.env.JWT_SECRET);
-}
+userSchema.methods.generateAuthToken = function () {
+  return (token = jwt.sign(
+    { id: this._id, status: this.status },
+    process.env.JWT_SECRET
+  ));
+};
 
 const userModel = mongoose.model("user", userSchema);
 
