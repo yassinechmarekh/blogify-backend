@@ -3,6 +3,8 @@ const bcrypt = require("bcrypt");
 const path = require("path");
 const fs = require('fs');
 const User = require("../models/userModel");
+const Post = require('../models/postModel');
+const Comment = require('../models/commentModel');
 const {
   createAuhtorValidation,
   updateUserProfileValidation,
@@ -11,6 +13,7 @@ const {
 const {
   cloudinaryUploadImage,
   cloudinarydeleteImage,
+  cloudinarydeleteMultiplrImage,
 } = require("../utils/cloudinary");
 
 /**----------------------------------------
@@ -75,7 +78,7 @@ module.exports.getCountReadersController = asyncHandler(async (req, res) => {
  * @access public
  -----------------------------------------*/
 module.exports.getUserController = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select("-password").populate('posts');
+  const user = await User.findById(req.params.id).select("-password").populate('posts').populate('comments');
   if (!user) {
     return res.status(404).json({ message: "User not found !" });
   }
@@ -232,14 +235,27 @@ module.exports.uploadProfilePhotoController = asyncHandler(async (req, res) => {
   if(!user){
     return res.status(404).json({message: 'User not found !'});
   }
-  // @TODO - Get all posts for this user
-  // @TODO - Get all public ids for images of this posts
-  // @TODO - Delete all images posts in cloudinary
+  // Get all posts for this user
+  const posts = Post.find({author: user._id});
+
+  // Get all public ids for images of this posts
+  const publicIds = posts?.map((post) => post.image.publicId);
+
+  // Delete all images posts in cloudinary
+  if(publicIds?.lenght > 0){
+    await cloudinarydeleteMultiplrImage(publicIds);
+  }
+
   // Delete image profile in cloudinary
   await cloudinarydeleteImage(user.profilePhoto.publicId);
-  // @TODO - Delete all posts and comments for this user
+
+  // Delete all posts and comments for this user
+  await Post.deleteMany({author: user._id});
+  await Comment.deleteMany({user: user._id});
+
   // Delete user
   await user.deleteOne();
+
   // Send response to client
   res.status(200).json({message: 'Account has been deleted succussfuly !'});
  })

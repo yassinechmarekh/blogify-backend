@@ -70,6 +70,13 @@ userSchema.virtual("posts", {
   localField: "_id",
 });
 
+// Get comments belong to this user
+userSchema.virtual('comments',{
+  ref: 'comment',
+  foreignField: 'user',
+  localField: '_id'
+})
+
 // Generate auth token
 userSchema.methods.generateAuthToken = function () {
   return (token = jwt.sign(

@@ -11,6 +11,7 @@ const {
   cloudinarydeleteImage,
 } = require("../utils/cloudinary");
 const Post = require("../models/postModel");
+const Comment = require('../models/commentModel');
 
 /**----------------------------------------
  * @desc Create new post
@@ -94,7 +95,7 @@ module.exports.getAllPostsController = asyncHandler(async (req, res) => {
 module.exports.getPostController = asyncHandler(async (req, res) => {
   const post = await Post.find({ slug: req.params.slug }).populate("author", [
     "-password",
-  ]);
+  ]).populate('comments');
   if (!post) {
     return res.status(404).json({ message: "Post not found !" });
   }
@@ -128,7 +129,7 @@ module.exports.deletePostController = asyncHandler(async (req, res) => {
     await cloudinarydeleteImage(post.image.publicId);
     await post.deleteOne();
 
-    // @TODO - Delete all comments belong to this post
+    await Comment.deleteMany({postId: post._id});
 
     res.status(200).json({ message: "Post has deleted successfully !" });
   } else {

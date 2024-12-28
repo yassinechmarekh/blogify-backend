@@ -39,7 +39,14 @@ const postSchema = mongoose.Schema({
       ref: "user",
     },
   ],
-}, {timestamps: true});
+}, {timestamps: true, toJSON: {virtuals: true}, toObject: {virtuals: true}});
+
+// Populate comments for this post
+postSchema.virtual('comments',{
+  ref: 'comment',
+  foreignField: 'postId',
+  localField: '_id'
+});
 
 const postModel = mongoose.model("post", postSchema);
 
