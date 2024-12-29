@@ -1,10 +1,10 @@
 const asyncHandler = require("express-async-handler");
 const bcrypt = require("bcrypt");
 const path = require("path");
-const fs = require('fs');
+const fs = require("fs");
 const User = require("../models/userModel");
-const Post = require('../models/postModel');
-const Comment = require('../models/commentModel');
+const Post = require("../models/postModel");
+const Comment = require("../models/commentModel");
 const {
   createAuhtorValidation,
   updateUserProfileValidation,
@@ -78,7 +78,10 @@ module.exports.getCountReadersController = asyncHandler(async (req, res) => {
  * @access public
  -----------------------------------------*/
 module.exports.getUserController = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id).select("-password").populate('posts').populate('comments');
+  const user = await User.findById(req.params.id)
+    .select("-password")
+    .populate("posts")
+    .populate("comments");
   if (!user) {
     return res.status(404).json({ message: "User not found !" });
   }
@@ -165,8 +168,8 @@ module.exports.updateUserPasswordController = asyncHandler(async (req, res) => {
   }
 
   let user = await User.findById(req.params.id);
-  if(!user){
-    return res.status(404).json({message: 'User not found !'});
+  if (!user) {
+    return res.status(404).json({ message: "User not found !" });
   }
   const passwordIsMatch = await bcrypt.compare(
     req.body.oldPassword,
@@ -195,23 +198,23 @@ module.exports.uploadProfilePhotoController = asyncHandler(async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ mesage: "No file provieded !" });
   }
-  
+
   const imagePath = path.join(__dirname, `../images/${req.file.filename}`);
-  
+
   const result = await cloudinaryUploadImage(imagePath);
-  
+
   const user = await User.findById(req.user.id);
-  
+
   if (user.profilePhoto.publicId !== null) {
     await cloudinarydeleteImage(user.profilePhoto.publicId);
   }
-  
+
   user.profilePhoto = {
     url: result.secure_url,
     publicId: result.public_id,
   };
   await user.save();
-  
+
   res.status(200).json({
     message: "Your profile photo uploaded successfully !",
     profilePhoto: {
@@ -219,7 +222,7 @@ module.exports.uploadProfilePhotoController = asyncHandler(async (req, res) => {
       publicId: result.public_id,
     },
   });
-  
+
   fs.unlinkSync(imagePath);
 });
 
@@ -229,20 +232,20 @@ module.exports.uploadProfilePhotoController = asyncHandler(async (req, res) => {
  * @method DELETE
  * @access private (only admin or user him self)
  -----------------------------------------*/
- module.exports.deleteUserAccountController = asyncHandler(async (req, res) => {
+module.exports.deleteUserAccountController = asyncHandler(async (req, res) => {
   // Get user by id
   const user = await User.findById(req.params.id);
-  if(!user){
-    return res.status(404).json({message: 'User not found !'});
+  if (!user) {
+    return res.status(404).json({ message: "User not found !" });
   }
   // Get all posts for this user
-  const posts = Post.find({author: user._id});
+  const posts = Post.find({ author: user._id });
 
   // Get all public ids for images of this posts
   const publicIds = posts?.map((post) => post.image.publicId);
 
   // Delete all images posts in cloudinary
-  if(publicIds?.lenght > 0){
+  if (publicIds?.lenght > 0) {
     await cloudinarydeleteMultiplrImage(publicIds);
   }
 
@@ -250,12 +253,12 @@ module.exports.uploadProfilePhotoController = asyncHandler(async (req, res) => {
   await cloudinarydeleteImage(user.profilePhoto.publicId);
 
   // Delete all posts and comments for this user
-  await Post.deleteMany({author: user._id});
-  await Comment.deleteMany({user: user._id});
+  await Post.deleteMany({ author: user._id });
+  await Comment.deleteMany({ user: user._id });
 
   // Delete user
   await user.deleteOne();
 
   // Send response to client
-  res.status(200).json({message: 'Account has been deleted succussfuly !'});
- })
+  res.status(200).json({ message: "Account has been deleted succussfuly !" });
+});
