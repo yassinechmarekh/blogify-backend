@@ -2,6 +2,12 @@ const joi = require("joi");
 
 const createAuhtorValidation = (obj) => {
   const schema = joi.object({
+    username: joi.string().trim().min(2).max(25).required().messages({
+      "string.base": `Username should be a type of text`,
+      "string.min": `Username must contain at least {#limit} characters.`,
+      "string.max": `Username must not exceed {#limit} characters.`,
+      "any.required": `Username is a required field`,
+    }),
     email: joi.string().trim().min(5).max(100).required().email().messages({
       "string.base": `Email should be a type of text`,
       "string.min": `Email must contain at least {#limit} characters.`,
@@ -66,7 +72,13 @@ const updateUserProfileValidation = (obj) => {
 
 const updateUserPasswordValidation = (obj) => {
   const schema = joi.object({
-    oldPassword: joi.required().messages({
+    email: joi.string().trim().min(5).max(100).email().optional().messages({
+      "string.base": `Email should be a type of text !`,
+      "string.min": `Email must contain at least {#limit} characters !`,
+      "string.max": `Email must not exceed {#limit} characters !`,
+      "string.email": "Email must be valid !",
+    }),
+    currentPassword: joi.required().messages({
       "any.required": `Your old password is required !`,
     }),
     newPassword: joi.string().required().min(8).messages({

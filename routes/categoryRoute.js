@@ -6,6 +6,7 @@ const {
   updateCategoryController,
   updateCategoryImageController,
   deleteCategoryController,
+  deleteManyCategoriesController,
 } = require("../controllers/categoryController");
 const { validateObjectId } = require("../middlewares/errorHandler");
 const photoUpload = require("../middlewares/uploadPhoto");
@@ -19,7 +20,8 @@ router
     photoUpload.single("image"),
     createCategoryController
   )
-  .get(getAllCategoriesController);
+  .get(getAllCategoriesController)
+  .delete(verfiyTokenAndAdmin, deleteManyCategoriesController);
 
 // /api/categories/:slug
 router.route("/:slug").get(getCategeoryController);

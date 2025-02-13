@@ -23,19 +23,85 @@ const {
  * @access private  (only admin)
  -----------------------------------------*/
 module.exports.getAllUsersController = asyncHandler(async (req, res) => {
-  const users = await User.find().select("-password");
-  res.status(200).json(users);
+  let users;
+  const { limit } = req.query;
+  if (limit) {
+    users = await User.find()
+      .select("-password")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    const oneMonthAgo = new Date();
+    oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+    const count = await User.countDocuments({
+      createdAt: { $gte: oneMonthAgo },
+    });
+    return res.status(200).json({ users, count });
+  }
+  users = await User.find().select("-password").sort({ createdAt: -1 });
+  const posts = await Post.find().select("likes");
+  const result = await Promise.all(
+    users.map(async (user) => {
+      const commentCount = await Comment.countDocuments({ user: user._id });
+      let postlikes = 0;
+      await Promise.all(
+        posts.map((post) => {
+          if (post.likes.includes(user._id.toString())) {
+            postlikes++;
+          }
+        })
+      );
+      return {
+        _id: user._id,
+        username: user.username,
+        email: user.email,
+        status: user.status,
+        profilePhoto: user.profilePhoto,
+        createdAt: user.createdAt,
+        comments: commentCount,
+        "posts Likes": postlikes,
+      };
+    })
+  );
+  res.status(200).json(result);
 });
 
 /**----------------------------------------
  * @desc Get all auhtors
  * @route /api/users/authors
  * @method GET
- * @access public
+ * @access private (Only admin)
  -----------------------------------------*/
 module.exports.getAllAuthorsController = asyncHandler(async (req, res) => {
-  const authors = await User.find({ status: "author" }).select("-password");
-  res.status(200).json(authors);
+  const authors = await User.find({ status: "author" })
+    .select("-password")
+    .sort({ createdAt: -1 });
+  const posts = await Post.find().select("likes");
+  const result = await Promise.all(
+    authors.map(async (author) => {
+      const postsCount = await Post.countDocuments({ author: author._id });
+      const commentCount = await Comment.countDocuments({ user: author._id });
+      let postsLikes = 0;
+      await Promise.all(
+        posts.map((post) => {
+          if (post.likes.includes(author._id.toString())) {
+            postsLikes++;
+          }
+        })
+      );
+      return {
+        _id: author._id,
+        username: author.username,
+        email: author.email,
+        profilePhoto: author.profilePhoto,
+        bio: author.bio,
+        createdAt: author.createdAt,
+        posts: postsCount,
+        comments: commentCount,
+        "posts Likes": postsLikes,
+      };
+    })
+  );
+  res.status(200).json(result);
 });
 
 /**----------------------------------------
@@ -45,8 +111,33 @@ module.exports.getAllAuthorsController = asyncHandler(async (req, res) => {
  * @access private (only admin)
  -----------------------------------------*/
 module.exports.gettAllReadersController = asyncHandler(async (req, res) => {
-  const readers = await User.find({ status: "reader" }).select("-password");
-  res.status(200).json(readers);
+  const readers = await User.find({ status: "reader" })
+    .select("-password")
+    .sort({ createdAt: -1 });
+  const posts = await Post.find().select("likes");
+  const result = await Promise.all(
+    readers.map(async (reader) => {
+      const comments = await Comment.countDocuments({ user: reader._id });
+      let postsLikes = 0;
+      await Promise.all(
+        posts.map((post) => {
+          if (post.likes.includes(reader._id.toString())) {
+            postsLikes++;
+          }
+        })
+      );
+      return {
+        _id: reader._id,
+        username: reader.username,
+        email: reader.email,
+        profilePhoto: reader.profilePhoto,
+        createdAt: reader.createdAt,
+        comments: comments,
+        "posts Likes": postsLikes,
+      };
+    })
+  );
+  res.status(200).json(result);
 });
 
 /**----------------------------------------
@@ -57,7 +148,13 @@ module.exports.gettAllReadersController = asyncHandler(async (req, res) => {
  -----------------------------------------*/
 module.exports.getCountAuthorsController = asyncHandler(async (req, res) => {
   const authorsCount = await User.find({ status: "author" }).countDocuments();
-  res.status(200).json({ count: authorsCount });
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const countLastMonth = await User.find({
+    status: "author",
+    createdAt: { $gte: oneMonthAgo },
+  }).countDocuments();
+  res.status(200).json({ authorsCount, countLastMonth });
 });
 
 /**----------------------------------------
@@ -68,7 +165,13 @@ module.exports.getCountAuthorsController = asyncHandler(async (req, res) => {
  -----------------------------------------*/
 module.exports.getCountReadersController = asyncHandler(async (req, res) => {
   const readersCount = await User.find({ status: "reader" }).countDocuments();
-  res.status(200).json({ count: readersCount });
+  const oneMonthAgo = new Date();
+  oneMonthAgo.setMonth(oneMonthAgo.getMonth() - 1);
+  const countLastMonth = await User.find({
+    status: "reader",
+    createdAt: { $gte: oneMonthAgo },
+  }).countDocuments();
+  res.status(200).json({ readersCount, countLastMonth });
 });
 
 /**----------------------------------------
@@ -78,14 +181,11 @@ module.exports.getCountReadersController = asyncHandler(async (req, res) => {
  * @access public
  -----------------------------------------*/
 module.exports.getUserController = asyncHandler(async (req, res) => {
-  const user = await User.findById(req.params.id)
-    .select("-password")
-    .populate("posts")
-    .populate("comments");
+  const user = await User.findById(req.params.id).select("-password");
   if (!user) {
     return res.status(404).json({ message: "User not found !" });
   }
-  res.status(200).json({ user });
+  res.status(200).json(user);
 });
 
 /**----------------------------------------
@@ -111,6 +211,7 @@ module.exports.createAuthorController = asyncHandler(async (req, res) => {
   }
 
   user = new User({
+    username: req.body.username,
     email: req.body.email,
     password: req.body.password,
     status: "author",
@@ -132,11 +233,10 @@ module.exports.updateUserProfileController = asyncHandler(async (req, res) => {
     return res.status(400).json({ message: error.details[0].message });
   }
 
-  const updatedUser = await User.findByIdAndUpdate(
+  await User.findByIdAndUpdate(
     req.params.id,
     {
       $set: {
-        email: req.body.email,
         username: req.body.username,
         job: req.body.job,
         bio: req.body.bio,
@@ -152,7 +252,7 @@ module.exports.updateUserProfileController = asyncHandler(async (req, res) => {
     }
   ).select("-password");
 
-  res.status(200).json(updatedUser);
+  res.status(200).json({ message: "Profile updated successfully !" });
 });
 
 /**----------------------------------------
@@ -171,8 +271,16 @@ module.exports.updateUserPasswordController = asyncHandler(async (req, res) => {
   if (!user) {
     return res.status(404).json({ message: "User not found !" });
   }
+  if (req.body.email) {
+    const emailExist = await User.find({ email: req.body.email });
+    if (emailExist.length > 0) {
+      return res
+        .status(400)
+        .json({ message: `${req.body.email} is already exist !` });
+    }
+  }
   const passwordIsMatch = await bcrypt.compare(
-    req.body.oldPassword,
+    req.body.currentPassword,
     user.password
   );
   if (!passwordIsMatch) {
@@ -182,10 +290,19 @@ module.exports.updateUserPasswordController = asyncHandler(async (req, res) => {
   const salt = await bcrypt.genSalt(10);
   req.body.newPassword = await bcrypt.hash(req.body.newPassword, salt);
 
+  if (req.body.email) {
+    user.email = req.body.email;
+  }
   user.password = req.body.newPassword;
   await user.save();
 
-  res.status(200).json({ message: "Password updated successfully!" });
+  res.status(200).json({
+    message: `${
+      req.body.email
+        ? "Account informations is updated successfully !"
+        : "Password updated successfully!"
+    }`,
+  });
 });
 
 /**----------------------------------------
@@ -239,7 +356,7 @@ module.exports.deleteUserAccountController = asyncHandler(async (req, res) => {
     return res.status(404).json({ message: "User not found !" });
   }
   // Get all posts for this user
-  const posts = Post.find({ author: user._id });
+  const posts = await Post.find({ author: user._id });
 
   // Get all public ids for images of this posts
   const publicIds = posts?.map((post) => post.image.publicId);
@@ -250,7 +367,9 @@ module.exports.deleteUserAccountController = asyncHandler(async (req, res) => {
   }
 
   // Delete image profile in cloudinary
-  await cloudinarydeleteImage(user.profilePhoto.publicId);
+  if (user.profilePhoto.publicId) {
+    await cloudinarydeleteImage(user.profilePhoto.publicId);
+  }
 
   // Delete all posts and comments for this user
   await Post.deleteMany({ author: user._id });
@@ -261,4 +380,37 @@ module.exports.deleteUserAccountController = asyncHandler(async (req, res) => {
 
   // Send response to client
   res.status(200).json({ message: "Account has been deleted succussfuly !" });
+});
+
+/**----------------------------------------
+ * @desc Get admin
+ * @route /api/users/admin
+ * @method GET
+ * @access public
+ -----------------------------------------*/
+module.exports.getAdminUserController = asyncHandler(async (req, res) => {
+  const user = await User.findOne({ status: "admin" }).select("-password");
+  if (!user) {
+    return res.status(404).json({ message: "Admin not found !" });
+  }
+  res.status(200).json(user);
+});
+
+/**----------------------------------------
+ * @desc Get limit authors
+ * @route /api/users/authors/limit
+ * @method GET
+ * @access public
+ -----------------------------------------*/
+module.exports.getLimitAuthorsController = asyncHandler(async (req, res) => {
+  let { limit } = req.query;
+  if (!limit) {
+    return res.status(400).json({ message: "No limit provided !" });
+  }
+  limit = parseInt(limit);
+  const authors = await User.find({ status: "author" })
+    .select("-password")
+    .limit(limit);
+
+  res.status(200).json(authors);
 });

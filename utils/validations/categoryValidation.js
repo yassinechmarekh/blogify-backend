@@ -31,6 +31,7 @@ const updateCategoryValidation = (obj) => {
       "string.base": `Category description should be a type of text !`,
       "string.min": `Category description must contain at least {#limit} characters !`,
     }),
+    icon: joi.optional(),
   });
   return schema.validate(obj);
 };

@@ -11,6 +11,8 @@ const {
   updateUserPasswordController,
   uploadProfilePhotoController,
   deleteUserAccountController,
+  getAdminUserController,
+  getLimitAuthorsController,
 } = require("../controllers/userController");
 const {
   verifyToken,
@@ -36,16 +38,22 @@ router
   .route("/password/:id")
   .put(validateObjectId, verfiyTokenAndUser, updateUserPasswordController);
 
+// /api/users/admin
+router.route('/admin').get(getAdminUserController);
+
 // /api/users/authors
 router
   .route("/authors")
-  .get(getAllAuthorsController)
+  .get(verfiyTokenAndAdmin ,getAllAuthorsController)
   .post(verfiyTokenAndAdmin, createAuthorController);
 
 // /api/users/authors/count
 router
   .route("/authors/count")
   .get(verfiyTokenAndAdmin, getCountAuthorsController);
+
+// /api/users/authors/limit
+router.route('/authors/limited').get(getLimitAuthorsController);
 
 // /api/users/readers
 router.route("/readers").get(verfiyTokenAndAdmin, gettAllReadersController);

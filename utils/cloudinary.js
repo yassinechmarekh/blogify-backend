@@ -13,27 +13,34 @@ const cloudinaryUploadImage = async (fileToUpload) => {
     return result;
   } catch (error) {
     console.log(error);
+    throw new Error("Internal Server Error (Cloudinary)");
   }
 };
 
 // Delete image from cloudinary
 const cloudinarydeleteImage = async (imagePublicId) => {
-    try {
-        const result = await cloudinary.uploader.destroy(imagePublicId);
-        return result;
-    } catch (error) {
-        console.log(error);
-    }
-}
+  try {
+    const result = await cloudinary.uploader.destroy(imagePublicId);
+    return result;
+  } catch (error) {
+    console.log(error);
+    throw new Error("Internal Server Error (Cloudinary)");
+  }
+};
 
 // Delete multiple image from cloudinary
 const cloudinarydeleteMultiplrImage = async (publicIds) => {
-    try {
-        const result = await cloudinary.v2.api.delete_resources(publicIds);
-        return result;
-    } catch (error) {
-        console.log(error);
-    }
-}
+  try {
+    const result = await cloudinary.v2.api.delete_resources(publicIds);
+    return result;
+  } catch (error) {
+    console.log(error);
+    throw new Error("Internal Server Error (Cloudinary)");
+  }
+};
 
-module.exports = {cloudinaryUploadImage, cloudinarydeleteImage, cloudinarydeleteMultiplrImage}
+module.exports = {
+  cloudinaryUploadImage,
+  cloudinarydeleteImage,
+  cloudinarydeleteMultiplrImage,
+};
